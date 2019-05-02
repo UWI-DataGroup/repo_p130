@@ -2,7 +2,7 @@
 //  algorithm name				hbss_preg.do
 //  project:							Pregnancy outcomes in SCD
 //  analysts:							Christina HOWITT
-//	date last modified		08-Jan-2019
+//	date last modified		02-May-2019
 
 ** General algorithm set-up
 version 15
@@ -843,6 +843,19 @@ sts graph ,
 **************************************************************************************
 **set mother as cluster unit
 xtset ID
+
+*sort out outcome
+	replace outcome = "live" in 186
+	replace outcome = "" in 231
+	replace outcome = "" in 234
+	replace outcome = "NND" in 361
+	replace outcome = "NND" in 379
+	replace outcome = "live" in 398
+	encode outcome, generate(outcome2)
+	drop outcome
+	rename outcome2 outcome	
+	tab outcome genotype, chi2
+
 **age at menarche
 codebook agem if genotype==1
 codebook agem if genotype==0
@@ -903,14 +916,23 @@ label define preg_out 1 "Live birth" 2 "Stillbirth" 3 "Surgical termination of p
 label values preg_out preg_out
 tab preg_out genotype, col
 
-*live birth - generate binary variable
-gen lbirth=.
-replace lbirth=1 if preg_out==1
-replace lbirth=0 if preg_out==2 | preg_out==3 | preg_out==4 | preg_out==5
-label variable lbirth "live birth"
-label define yesno 1 "Yes" 0 "No"
-label values lbirth yesno
-xtlogit lbirth genotype, or
+*surgical termination
+gen sterm=.
+replace sterm=1 if preg_out==3
+replace sterm=0 if preg_out==1 | preg_out==2 | preg_out==4 | preg_out==5
+label variable sterm "surgical termination"
+label values sterm yesno
+tab sterm genotype, col
+xtlogit sterm genotype, or
+
+*spontaneous Abortion
+gen spab2=0
+replace spab2=1 if delivery==6
+replace spab2=. if delivery==.
+drop spab
+rename spab2 spab
+tab spab genotype, chi2 col
+xtlogit spab genotype, or
 
 *stillbirth - generate binary variable
 gen sbirth=.
@@ -919,21 +941,47 @@ replace sbirth=0 if preg_out==1 | preg_out==3 | preg_out==4 | preg_out==5
 label variable sbirth "stillbirth"
 label values sbirth yesno
 xtlogit sbirth genotype, or
-tab sbirth genotype, chi exact
-
-*surgical termination
-gen sterm=.
-replace sterm=1 if preg_out==3
-replace sterm=0 if preg_out==1 | preg_out==2 | preg_out==4 | preg_out==5
-label variable sterm "surgical termination"
-label values sterm yesno
-xtlogit sterm genotype, or
-
-*spontaneous Abortion
-xtlogit spab genotype, or
+tab sbirth genotype, col chi exact
 
 *ectopic pregnancy
-xtlogit ect genotype, or
+tab ect genotype, chi2 exact col
+
+*live birth - generate binary variable
+gen lbirth=.
+replace lbirth=1 if preg_out==1
+replace lbirth=0 if preg_out==2 | preg_out==3 | preg_out==4 | preg_out==5
+label variable lbirth "live birth"
+label define yesno 1 "Yes" 0 "No"
+label values lbirth yesno
+tab lbirth genotype, chi2 col
+xtlogit lbirth genotype, or
+
+*neonatal deaths
+gen nnd=0
+replace nnd=1 if outcome==1
+replace nnd=. if outcome==.
+tab nnd genotype, chi2 exact col
+
+*gestational age
+codebook gest if genotype==1
+codebook gest if genotype==0
+ranksum gest, by(genotype)
+
+*birthweight
+codebook BW if genotype==1
+codebook BW if genotype==0
+ranksum BW, by(genotype)
+tab bw_cat genotype, miss col
+xtlogit bw_cat genotype, or
+
+*low Apgar // need to work out whether to exclude APgar scores of 0
+numlabel, add mask("#")
+label values lowAPGAR5 lowAPGAR5
+replace lowAPGAR5=. if lbirth==0
+replace lowAPGAR5=. if nnd==1
+tab lowAPGAR5 genotype, col chi exact
+logistic lowAPGAR5 genotype
+xtlogit lowAPGAR5 genotype, or
 
 *delivery details for live deliveries
 gen deldet=.
@@ -943,208 +991,61 @@ label variable deldet "details of delivery"
 label define deldet 1 "caesarian" 2 "vaginal"
 label values deldet deldet
 tab deldet genotype, col
+
 *caesarian
 gen ces=.
 replace ces=1 if deldet==1
 replace ces=0 if deldet==2
 label variable ces "caesarian section"
 label values ces yesno
+tab ces genotype, col
 xtlogit ces genotype
-*vaginal
-gen vag=.
-replace vag=1 if deldet==2
-replace vag=0 if deldet==1
-label variable vag "vaginal delivery"
-label values vag yesno
-xtlogit vag genotype
 
-*pregnancy success
-tab preg_success genotype, miss col
-tab menarche_med preg_success if genotype==1, miss col
-
-*birthweight
-summarize BW if genotype==1
-summarize BW if genotype==0
-ranksum BW, by(genotype)
-tab bw_cat genotype, miss col
-xtlogit bw_cat genotype, or
-
-*prematurity
-tab premat genotype, miss col
-
-*length of labour
-codebook labtime if genotype==1
-codebook labtime if genotype==0
-ranksum labtime, by(genotype)
-
-*low Apgar
-label values lowAPGAR5 lowAPGAR5
-tab lowAPGAR5 genotype, col chi
-logistic lowAPGAR5 genotype
-xtlogit lowAPGAR5 genotype, or
-
-*********************************************************************************************************
-*	GS sent reformatted tables on 02-Fev-2019. The remaining code refers to this and uses his table numbers
-*********************************************************************************************************
-*TABLE 1 Outcome in 177 pregnancies of 71 SS patients and in 226 pregnancies of 74 controls
-ranksum gest, by(genotype)
-
-*sort out outcome
-	replace outcome = "live" in 186
-	replace outcome = "" in 231
-	replace outcome = "" in 234
-	replace outcome = "NND" in 361
-	replace outcome = "NND" in 379
-	replace outcome = "live" in 398
-	encode outcome, generate(outcome2)
-	drop outcome
-	rename outcome2 outcome
-tab outcome genotype, chi2
-
-xtlogit ACS genotype, or
+*Acute chest syndrome
 tab ACS genotype, chi2 exact
-xtlogit UTI genotype, or
+*UTI
 tab UTI genotype, chi2 exact
-xtlogit APH genotype, or
+*Antepartum haemorrhage
 tab APH genotype, chi2 exact
-xtlogit PPH genotype, or
+*Post partum haemorrhage
+tab PPH genotype, chi2 exact
+*Pregnancy induced hypertension
+tab PIH genotype, col
 xtlogit PIH genotype, or
+*Pre-eclampsia & eclampsia
+tab PET genotype, col
 xtlogit PET genotype, or
-xtlogit retplac genotype, or
-tab retplac genotype, chi2 exact
-xtlogit adplac genotype, or
-tab adplac genotype, chi2 exact
-xtlogit sep genotype, or
-tab sep genotype, chi2 exact
-tab Death genotype, chi2 exact
-
-
-*Table 2  Secular Differences in Obstetric Outcome over 15 years before and after May 31, 2003
-*generate a variable to indicate whether date is before or after 31 May 2003
-gen term=mdy(DELm, DELd, DELy)
-format term %dD_M_Y
-
-gen timecut=0
-replace timecut=1 if term >d(31May2003)
-
-**SS subjects
-*total pregnancies in SS
-tab pregtot timecut if genotype==1, chi2
-*terminated pregnancies in SS
-gen STOP=0
-replace STOP=1 if delivery==4
-replace STOP=. if delivery==.
-tab STOP timecut if genotype==1, chi2
-xtlogit STOP timecut if genotype==1, or
-
-*spontaneous Abortion
-gen spab2=0
-replace spab2=1 if delivery==6
-replace spab2=. if delivery==.
-drop spab
-rename spab2 spab
-tab spab timecut if genotype==1, chi2
-xtlogit spab timecut if genotype==1, or
-
-*Stillbirth
-tab sbirth timecut if genotype==1, chi2
-xtlogit sbirth timecut if genotype==1, or
-
-*live deliveries
-gen live=0
-replace live=1 if outcome==3
-replace live=. if outcome==.
-tab live timecut if genotype==1, chi2
-xtlogit live timecut if genotype==1, or
-
-*neonatal deaths
-gen nnd=0
-replace nnd=1 if outcome==1
-replace nnd=. if outcome==.
-tab nnd timecut if genotype==1, chi2
-xtlogit nnd timecut if genotype==1, or
-
-*caesarian delivery
-tab ces timecut if genotype==1, chi2
-xtlogit ces timecut if genotype==1, or
-
-*birthweight
-codebook BW if genotype==1 & timecut==0
-dis 101-47
-codebook BW if genotype==1 & timecut==1
-dis 76-24
-ranksum BW if genotype==1, by(timecut)
-tab bw_cat timecut if genotype==1, chi2
-xtlogit bw_cat timecut if genotype==1, or
-
-*low APGAR at 5 minutes
-tab lowAPGAR5 timecut if genotype==1, chi2
-xtlogit lowAPGAR5 timecut if genotype==1, or
-
-*gestational age
-codebook gest if genotype==1 & timecut==0
-codebook gest if genotype==1 & timecut==1
-ranksum gest if genotype==1, by(timecut)
-gen lowgest=0
-replace lowgest=1 if gest <37
-replace lowgest=. if gest==.
-tab lowgest timecut if genotype==1, chi2
-xtlogit lowgest timecut if genotype==1, or
-
+*Retained placenta
+tab retplac genotype, chi2 exact col
+*sepsis
+tab sep genotype, chi2 exact col
 *maternal deaths
-tab Death timecut if genotype==1, chi2
-xtlogit Death timecut if genotype==1, or
+tab Death genotype, chi2 exact col
 
-****************
-**AA controls
-*total pregnancies
-tab pregtot timecut if genotype==0, chi2
-*terminated pregnancies
-tab STOP timecut if genotype==0, chi2
-xtlogit STOP timecut if genotype==0, or
-tab STOP timecut if genotype==0
 
-*spontaneous Abortion
-tab spab timecut if genotype==0, chi2
-xtlogit spab timecut if genotype==0, or
+save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_AASSpreg.dta", replace
 
-*ectopic pregnancies
-tab ectp timecut if genotype==0, chi2
-xtlogit ectp timecut if genotype==0, or
+/**GS email (21-Mar-19): relationship between maternal HbF and birth weight
+drop if genotype==0
+bysort ID: egen HbF2 = min(HbF)
+xtreg BW HbF2 
+bysort ID: egen Hb2=min(Hb)
+xtreg BW HbF2 Hb2 
+bysort ID: egen retics2=min(retics)
+xtreg BW HbF2 Hb2 retics2
 
-*Stillbirth
-tab sbirth timecut if genotype==0, chi2
-xtlogit sbirth timecut if genotype==0, or
-
-*live deliveries
-tab live timecut if genotype==0, chi2
-xtlogit live timecut if genotype==0, or
-
-*neonatal deaths
-tab nnd timecut if genotype==0, chi2
-xtlogit nnd timecut if genotype==0, or
-
-*caesarian delivery
-tab ces timecut if genotype==0, chi2
-xtlogit ces timecut if genotype==0, or
-
-*birthweight
-codebook BW if genotype==0 & timecut==0
-codebook BW if genotype==0 & timecut==1
-ranksum BW if genotype==0, by(timecut)
-tab bw_cat timecut if genotype==0, chi2
-xtlogit bw_cat timecut if genotype==0, or
-
-*low APGAR at 5 minutes
-tab lowAPGAR5 timecut if genotype==0, chi2
-xtlogit lowAPGAR5 timecut if genotype==0, or
-
-*gestational age
-codebook gest if genotype==0 & timecut==0
-codebook gest if genotype==0 & timecut==1
-ranksum gest if genotype==0, by(timecut)
-tab lowgest timecut if genotype==0, chi2
-xtlogit lowgest timecut if genotype==0, or
-
-*maternal deaths
-tab Death timecut if genotype==0, chi2
+/***********************************
+*	12-Mar-2019: total hemoglobin, mean cell volume, reticulocyte counts, total nucleated cell count, HbF level or alpha thalassaemia status; history of dactylitis 
+***********************************
+import excel "C:\Users\Christina\Google Drive\Christina_work\Projects\pregnancy_scd\04.Outputs\20190311\Subdivisions pregnancy outcome.xlsx", sheet("christina") firstrow clear
+drop if ID==.
+merge 1:m ID using "C:\Users\Christina\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_AASSpreg.dta"
+drop if genotype==0
+destring Group, replace
+ologit Group Hb, or
+ologit Group MCV, or
+ologit Group retics, or
+* don't think I have a  variable for total nucleated cell count
+ologit Group HbF, or
+ologit Group Alpha, or
+ologit Group HOdactylitis, or 
