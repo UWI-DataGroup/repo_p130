@@ -21,10 +21,12 @@ local logpath X:\OneDrive - The University of the West Indies\repo_datagroup\rep
 capture log close
 cap log using "`logpath'\scdpreg_001", replace
 
-/**Open dataset
+**Open dataset
 import excel "`datapath'\version01\1-input\Cohort  SS pregnancy  2018 coding Ian-Christina.xlsx", sheet("SS Update") firstrow
 
-**tidy up DATASET
+*------------------------------------------------------------------------------------------------------------------------------
+**DATA PREPARATION
+*------------------------------------------------------------------------------------------------------------------------------
 drop if ID==.
 drop if preg==.
 codebook ID
@@ -135,17 +137,6 @@ gen aap = (dode1 - DOB)/365.25
 order aap, after(dode1)
 label var aap "Age at pregnancy (in years)"
 
-
-********************************************************************************
-*	Table 1: Selected characteristics and morbidity during pregnancy among 94
-*	women with sickle cell disease
-********************************************************************************
-
-**********************CHARACTERISTICS OF WOMEN**********************************
-
-**age at menarche
-codebook agem
-
 **generate gravida based on gestational age
 codebook gest
 gen gravida1 =.
@@ -181,10 +172,6 @@ order mat_morb, before(ACS)
 label variable mat_morb "maternal morbidity"
 label values mat_morb noyes
 tab mat_morb
-
-*******************************************************************************************
-* Table 2. Pregnancy outcomes for 174 pregnancies among 94 women with sickle cell disease *
-*******************************************************************************************
 
 **Pregnancy outcome (type of delivery) to be tidied up as follows:
 tab result
@@ -267,8 +254,6 @@ replace preg_success1=1 if gest>=24 & gest<. & BW>0.5 & BW<.
 replace preg_success1=. if BW==. | gest==.
 tab preg_success1, miss
 
-
-
 *menarche before and after mean
 codebook agem
 gen menarche_med=.
@@ -345,91 +330,19 @@ list labtime delivery if labtime!=. & delivery !=5
 codebook labtime if delivery==5
 summarize labtime if delivery==5
 
-*************************************************************************************************************
-*	Table 3:The effect of fetal haemoglobin, total haemoglobin, and a composite predictor of SCD severity
-*	on maternal morbidity and pregnancy success, for 174 pregnancies among 99 women with sickle cell disease
-*************************************************************************************************************
-xtset ID pregtot
-
-**Predictor: HbF
-**xtlogit mat_morb HbF aap, or
-*xtlogit preg_success HbF aap, or
-*Predictor: Hb
-*xtlogit mat_morb Hb aap, or
-*xtlogit preg_success Hb aap, or
-
-*triad predictor: defined as Dactylitis, high wbc >15 and severe anaemia hb<7
-gen triad=.
-replace triad=1 if HOdactylitis==1 & WBC>15 & Hb<7
-replace triad=0 if HOdactylitis==0 & WBC<=15 & Hb >=7 & Hb<.
-list ID HOdactylitis WBC Hb if HOdactylitis==1 & WBC>15
-	*separate predictors
-	*xtlogit mat_morb i.HOdactylitis aap, or
-	*xtlogit preg_success i.HOdactylitis aap, or
-
-	gen highWBC=.
-	replace highWBC=0 if WBC<=15
-	replace highWBC=1 if WBC>15 & WBC<.
-	**xtlogit mat_morb i.highWBC aap, or
-	*xtlogit preg_success i.highWBC aap, or
-
-gen highWBC2=.
-replace highWBC2=1 if WBC<=15
-replace highWBC2=0 if WBC>15 & WBC<.
-**xtlogit mat_morb i.highWBC2 aap, or
-
-gen anaemia=.
-replace anaemia=0 if Hb<=7
-replace anaemia=1 if Hb>7 & Hb<.
-*xtlogit mat_morb i.anaemia aap, or
-*xtlogit preg_success i.anaemia aap, or
-
-*************************************************************************************************************
-* Table 4: Haematological characteristics of recurrent spontaneous aborters vs those
-*************************************************************************************************************
-
-tab delivery, miss
-gen spab=.
-replace spab=1 if delivery==6
-replace spab=0 if delivery !=6 & delivery<.
-tab spab, miss
-sort ID pregtot
-
-gen srep=0
-replace srep=. if pregtot==0 | spab==.
-replace srep=1 if spab[_n]==spab[_n-1] & ID[_n]==ID[_n-1] & spab==1
-replace srep=1 if srep[_n]==0 & srep[_n+1]==1
-
-bysort ID: egen srep1=max(srep)
-order ID pregtot spab srep srep1
-egen var1 = tag(ID)
-order ID pregtot spab srep srep1 var1
-
-tab srep1 if var1==1, miss
-tab srep1 if var1==1 & pregtot>0, miss
-list ID if var1==1 & srep1==. & pregtot>0 & pregtot<.
-
-order var1, after(ID)
-tab srep if var1==1
-
-/*
-logistic srep1 HbF aap if var1==1
-logistic srep1 Hb aap if var1==1
-logistic srep1 HOdactylitis aap if var1==1
-logistic srep1 highWBC aap if var1==1
-logistic srep1 anaemia aap if var1==1
-*/
 
 save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_SSpreg.dta", replace
 
-*/
+
 *****************************************************************************************************************
 *	AA analysis
 *****************************************************************************************************************
 clear
 **Open dataset
 import excel "`datapath'\version01\1-input\Cohort AA pregnancy 2018 coding Ian-Christina(USE).xlsx", sheet("Sheet1") firstrow clear
-**tidy up DATASET
+*------------------------------------------------------------------------------------------------------------------------------
+**DATA PREPARATION
+*------------------------------------------------------------------------------------------------------------------------------
 drop if ID==.
 drop if preg=="3a" | preg=="3b"
 destring preg, replace
@@ -583,13 +496,6 @@ gen aap = (dode1 - DOB)/365.25
 order aap, after(dode1)
 label var aap "Age at pregnancy (in years)"
 
-********************************************************************************
-*	Table 1: Selected characteristics and morbidity during pregnancy among 94
-*	women with sickle cell disease
-********************************************************************************
-
-**********************CHARACTERISTICS OF WOMEN**********************************
-
 **age at menarche
 codebook agem
 
@@ -635,10 +541,6 @@ order parity, after(gravida)
 *histogram parity
 codebook parity
 summarize parity
-
-*******************************************************************************************
-* Table 2. Pregnancy outcomes for 174 pregnancies among 94 women with sickle cell disease *
-*******************************************************************************************
 
 **Pregnancy outcome (type of delivery) to be tidied up as follows:
 tab result
@@ -796,48 +698,13 @@ summarize labtime if delivery==5
 save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_AApreg.dta", replace
 
 *****************************************************************************************************************
-*	Combine datasets
+*	Combine datasets for SS AA comparison
 *****************************************************************************************************************
 append using "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_SSpreg.dta", force
 tab genotype
 order genotype, after(ID)
 drop children
 
-/*****FIGURE 2A
-** SET survival dataset
-** Between menarche and all pregnancies
-stset aap, fail(pregtot==1 2 3 4 5 6 7) origin(agem) id(ID) exit(time .)
-
-** All pregnancies
-stci, by(genotype)
-sts test genotype
-xi: stcox i.genotype, robust
-*
-#delimit ;
-sts graph ,
-	by(genotype) fail
-	plot1opts(lw(thin) lp("l") lc(gs0))
-	plot2opts(lw(thin) lp("-") lc(gs0))
-
-	plotregion(c(gs16) ic(gs16) ilw(thin) lw(thin))
-	graphregion(color(gs16) ic(gs16) ilw(thin) lw(thin))
-	ysize(10) xsize(15)
-
-   	xlab(0(5)30, labs(large) grid glc(gs14)) xscale(lw(vthin)) xtitle("Time interval (years)")
-	 xmtick(0(1)30)
-
-    ylab(0(0.2)1,labs(large) grid glc(gs14) angle(0) format(%9.1f)) ytitle("Proportion of pregnancies")
-    yscale(lw(vthin))
-
-    title("Years between menarche and all pregnancies", bfc(gs14) blc(gs0)
-    position(11) box bexpand  blw(vthin) margin(l=2 r=2 t=2 b=2))
-		legend(bexpand size(medlarge) position(12) bm(t=1 b=0 l=0 r=0) colf cols(2)
-			region(fcolor(gs14) lw(vthin) margin(l=2 r=2 t=2 b=2))
-			lab(2 "Controls")
-			lab(1 "Subjects")
-	);
-#delimit cr
-*/
 **************************************************************************************
 *	Table 1: Selected characteristics and pregnancy outcomes of subjects and controls
 **************************************************************************************
@@ -861,7 +728,7 @@ codebook agem if genotype==1
 codebook agem if genotype==0
 ranksum agem, by(genotype)
 
-**gravida and parity
+**SECTION 1: GRAVIDA AND PARITY
 *histogram gravida, by(genotype)
 summarize gravida if genotype==1
 summarize gravida if genotype==0
@@ -872,6 +739,7 @@ summarize parity if genotype==1
 summarize parity if genotype==0
 ranksum parity, by(genotype)
 
+**SECTION 2: PREGNANCY OUTCOME 
 **dropping one twin pregnancy from AA controls, as twin pregnancies change many of the features associated with pregnancy outcome.
 drop if ID==1256 & pregtot==3
 *Pregnancy outcome
@@ -885,25 +753,25 @@ tab delivery genotype, col
            |      0.00       1.13 |      0.49
 -----------+----------------------+----------
    2 ,LSCS |        31         29 |        60 	 lower segment caesarian section
-           |     13.60      16.38 |     14.81
+           |     13.72      16.38 |     14.81
 -----------+----------------------+----------
      3 ,SB |         4         14 |        18    stillbirth
-           |      1.75       7.91 |      4.44
+           |      1.77       7.91 |      4.44
 -----------+----------------------+----------
    4 ,STOP |        12         14 |        26    Surgical Termination of pregnancy
-           |      5.26       7.91 |      6.42
+           |      5.31       7.91 |      6.42
 -----------+----------------------+----------
-    5 ,SVD |       152         62 |       214    spontaneous vaginal delivery
-           |     66.67      35.03 |     52.84
+    5 ,SVD |       150         62 |       214    spontaneous vaginal delivery
+           |     66.37      35.03 |     52.84
 -----------+----------------------+----------
    6 ,Spab |        24         56 |        80    Spontaneous Abortion
-           |     10.53      31.64 |     19.75
+           |     10.62      31.64 |     19.75
 -----------+----------------------+----------
 7 ,Ectopic |         5          0 |         5     Ectopic pregnancy
-           |      2.19       0.00 |      1.23
+           |      2.21       0.00 |      1.23
 -----------+----------------------+----------
-     Total |       228        177 |       405
-           |    100.00     100.00 |    100.00 */
+     Total |       226        177 |       405
+           |    100.00     100.00 |    100.00   */
 
 
 gen preg_out=.
@@ -916,24 +784,22 @@ label define preg_out 1 "Live birth" 2 "Stillbirth" 3 "Surgical termination of p
 label values preg_out preg_out
 tab preg_out genotype, col
 
-*surgical termination
-gen sterm=.
-replace sterm=1 if preg_out==3
-replace sterm=0 if preg_out==1 | preg_out==2 | preg_out==4 | preg_out==5
-label variable sterm "surgical termination"
-label values sterm yesno
-tab sterm genotype, col
-xtlogit sterm genotype, or
+*Termination
+gen term=.
+replace term=1 if preg_out==3
+replace term=0 if preg_out==1 | preg_out==2 | preg_out==4 | preg_out==5
+label variable term "termination"
+label values term yesno
+tab term genotype, col
+xtlogit term genotype, or
 
 *spontaneous Abortion
-gen spab2=0
-replace spab2=1 if delivery==6
-replace spab2=. if delivery==.
-drop spab
-rename spab2 spab
+gen spab=0 
+replace spab=1 if delivery==6
+replace spab=. if delivery==.
 tab spab genotype, chi2 col
 xtlogit spab genotype, or
-
+ 
 *stillbirth - generate binary variable
 gen sbirth=.
 replace sbirth=1 if preg_out==2
@@ -1025,21 +891,13 @@ tab Death genotype, chi2 exact col
 
 save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_AASSpreg.dta", replace
 
-/**GS email (21-Mar-19): relationship between maternal HbF and birth weight
-drop if genotype==0
-bysort ID: egen HbF2 = min(HbF)
-xtreg BW HbF2 
-bysort ID: egen Hb2=min(Hb)
-xtreg BW HbF2 Hb2 
-bysort ID: egen retics2=min(retics)
-xtreg BW HbF2 Hb2 retics2
 
-/***********************************
+/*****************************************************************************************************************************************************************
 *	12-Mar-2019: total hemoglobin, mean cell volume, reticulocyte counts, total nucleated cell count, HbF level or alpha thalassaemia status; history of dactylitis 
-***********************************
-import excel "C:\Users\Christina\Google Drive\Christina_work\Projects\pregnancy_scd\04.Outputs\20190311\Subdivisions pregnancy outcome.xlsx", sheet("christina") firstrow clear
+******************************************************************************************************************************************************************
+import excel "`datapath'\version01\1-input\Subdivisions pregnancy outcome.xlsx", sheet("christina") firstrow clear
 drop if ID==.
-merge 1:m ID using "C:\Users\Christina\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_AASSpreg.dta"
+merge 1:m ID using "`datapath'\version01\1-input\cohort_AASSpreg.dta"
 drop if genotype==0
 destring Group, replace
 ologit Group Hb, or
@@ -1049,3 +907,58 @@ ologit Group retics, or
 ologit Group HbF, or
 ologit Group Alpha, or
 ologit Group HOdactylitis, or 
+*/
+
+/****************************************************************************
+**GS email (21-Mar-19): relationship between maternal HbF and birth weight
+****************************************************************************
+drop if genotype==0
+bysort ID: egen HbF2 = min(HbF)
+xtreg BW HbF2 
+bysort ID: egen Hb2=min(Hb)
+xtreg BW HbF2 Hb2 
+bysort ID: egen retics2=min(retics)
+xtreg BW HbF2 Hb2 retics2
+*/
+
+*******************************************************
+* Markov model: effect of pregnancy order on success 
+*******************************************************
+import excel using "`datapath'\version01\1-input\ss_preg_outcome_001.xlsx", firstrow clear
+
+** Successful and unsuccessful pregnancy outcome
+** Successful: SVD, LSCS
+** Unsuccessful: SB, Spab, NND
+label define op_ 0 "no" 1 "success"
+foreach var in p1 p2 p3 p4 p5 p6 {
+    gen o`var' = 0
+    replace o`var' = 1 if `var' == "SVD" | `var' == "LSCS"
+    replace o`var' = . if `var'==""
+    label values  o`var' op_
+}
+
+** Pregnancies 1 to 6 as separate events
+reshape long p op , i(pid) j(number)
+xtset pid number
+
+** Grouping pregnancies 3 and over
+gen reduce35 = number
+recode reduce35 4 5 6 = 3
+gen op35 = op
+replace op35 = op35[_n-1] if pid==pid[_n-1] & op35[_n-1]<. & number>=4
+collapse (mean) op35, by(pid reduce35)
+
+** Transition frequencies
+** First and Second pregnancies
+markov op35 if reduce35<=2
+** Second and Third + pregnancies
+markov op35 if reduce35>=2
+
+** Modelling
+xtset pid reduce35
+xtlogit op35 i.reduce35, or
+
+** xtlogit op35 reduce35, or
+** predict pred35_1, pr
+** xtlogit op35 i.reduce35, or
+** predict pred35_2, pr
