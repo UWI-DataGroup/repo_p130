@@ -774,6 +774,7 @@ tab delivery genotype, col
            |    100.00     100.00 |    100.00   */
 
 
+
 gen preg_out=.
 replace preg_out=1 if delivery==1 | delivery==2 | delivery==5
 replace preg_out=2 if delivery==3
@@ -783,6 +784,8 @@ replace preg_out=5 if delivery==7
 label define preg_out 1 "Live birth" 2 "Stillbirth" 3 "Surgical termination of pregnancy" 4 "Spontaneous abortion" 5 "Ectopic"
 label values preg_out preg_out
 tab preg_out genotype, col
+
+
 
 *Termination
 gen term=.
@@ -839,6 +842,10 @@ codebook BW if genotype==0
 ranksum BW, by(genotype)
 tab bw_cat genotype, miss col
 xtlogit bw_cat genotype, or
+*birthweight after controlling for gestational age
+bysort genotype: sum BW
+regress BW genotype
+regress BW genotype gest
 
 *low Apgar // need to work out whether to exclude APgar scores of 0
 numlabel, add mask("#")
@@ -888,6 +895,72 @@ tab sep genotype, chi2 exact col
 *maternal deaths
 tab Death genotype, chi2 exact col
 
+******************************************************************************************************************************************************
+*  Added on 3rd May 2019 in response to IH's comments on draft of paper
+******************************************************************************************************************************************************
+*% with at least 1 ANC visit
+replace ANC = "" in 86
+replace ANC = "" in 90
+replace ANC = "" in 147
+replace ANC = "" in 158
+replace ANC = "" in 159
+replace ANC = "" in 21
+replace ANC = "" in 27
+replace ANC = "" in 56
+replace ANC = "" in 57
+replace ANC = "" in 59
+replace ANC = "" in 63
+replace ANC = "" in 64
+replace ANC = "" in 65
+replace ANC = "" in 66
+replace ANC = "" in 74
+replace ANC = "" in 76
+replace ANC = "" in 78
+replace ANC = "" in 81
+replace ANC = "" in 97
+replace ANC = "" in 98
+replace ANC = "" in 114
+replace ANC = "" in 118
+replace ANC = "" in 121
+replace ANC = "" in 122
+replace ANC = "" in 123
+replace ANC = "" in 128
+replace ANC = "" in 136
+replace ANC = "" in 139
+replace ANC = "" in 160
+replace ANC = "" in 193
+replace ANC = "" in 226
+replace ANC = "" in 259
+replace ANC = "" in 263
+replace ANC = "" in 352
+replace ANC = "" in 370
+replace ANC = "" in 373
+replace ANC = "" in 107
+destring ANC, replace
+gen anc1=.
+replace anc1=0 if ANC<1
+replace anc1=1 if ANC>1 & ANC<.
+label variable anc1 "1+ ANC visits"
+label define anc1 0 "no ANC visits" 1 "1+ ANC visits"
+label values anc1 anc1
+tab anc1 genotype, miss col
+**4+ ANC visits
+gen anc4=.
+replace anc4=0 if ANC<4
+replace anc4=1 if ANC>4 & ANC<.
+label variable anc4 "4+ ANC visits"
+label define anc4 0 "<4 ANC visits" 1 "4+ ANC visits"
+label values anc4 anc4 
+tab anc4 genotype, miss col 
+
+
+** Median gestational age in SS mothers in those with c section vs svd
+codebook gest if ces==1 & genotype==1
+
+gen svd=0
+replace svd=1 if delivery==5
+replace svd=. if delivery==.
+codebook gest if svd==1 & genotype==1
 
 save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_AASSpreg.dta", replace
 
@@ -921,7 +994,7 @@ bysort ID: egen retics2=min(retics)
 xtreg BW HbF2 Hb2 retics2
 */
 
-*******************************************************
+/*******************************************************
 * Markov model: effect of pregnancy order on success 
 *******************************************************
 import excel using "`datapath'\version01\1-input\ss_preg_outcome_001.xlsx", firstrow clear
