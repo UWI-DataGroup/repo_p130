@@ -24,7 +24,7 @@ cap log using "`logpath'\scdpreg_001", replace
 **Open dataset
 import excel "`datapath'\version01\1-input\Cohort  SS pregnancy  2018 coding Ian-Christina.xlsx", sheet("SS Update") firstrow
 
-*------------------------------------------------------------------------------------------------------------------------------
+/*------------------------------------------------------------------------------------------------------------------------------
 **DATA PREPARATION
 *------------------------------------------------------------------------------------------------------------------------------
 drop if ID==.
@@ -173,7 +173,7 @@ label variable mat_morb "maternal morbidity"
 label values mat_morb noyes
 tab mat_morb
 
-**Pregnancy outcome (type of delivery) to be tidied up as follows:
+**Pregnancy outcome (type of delivery) to be tidied up as follows: 
 tab result
 
 /*
@@ -964,8 +964,8 @@ codebook gest if svd==1 & genotype==1
 
 save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_AASSpreg.dta", replace
 
-
-/*****************************************************************************************************************************************************************
+*/
+*****************************************************************************************************************************************************************
 *	12-Mar-2019: total hemoglobin, mean cell volume, reticulocyte counts, total nucleated cell count, HbF level or alpha thalassaemia status; history of dactylitis 
 ******************************************************************************************************************************************************************
 import excel "`datapath'\version01\1-input\Subdivisions pregnancy outcome.xlsx", sheet("christina") firstrow clear
