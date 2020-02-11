@@ -886,7 +886,7 @@ tab PPH genotype, chi2 exact
 tab PIH genotype, col
 xtlogit PIH genotype, or
 *Pre-eclampsia & eclampsia
-tab PET genotype, col
+tab PET genotype, chi2 exact expected col
 xtlogit PET genotype, or
 *Retained placenta
 tab retplac genotype, chi2 exact col
@@ -894,6 +894,7 @@ tab retplac genotype, chi2 exact col
 tab sep genotype, chi2 exact col
 *maternal deaths
 tab Death genotype, chi2 exact col
+
 
 ******************************************************************************************************************************************************
 *  Added on 3rd May 2019 in response to IH's comments on draft of paper
@@ -940,6 +941,7 @@ destring ANC, replace
 gen anc1=.
 replace anc1=0 if ANC<1
 replace anc1=1 if ANC>1 & ANC<.
+replace anc1=. if gest<24
 label variable anc1 "1+ ANC visits"
 label define anc1 0 "no ANC visits" 1 "1+ ANC visits"
 label values anc1 anc1
@@ -948,6 +950,7 @@ tab anc1 genotype, miss col
 gen anc4=.
 replace anc4=0 if ANC<4
 replace anc4=1 if ANC>4 & ANC<.
+replace anc4=. if gest<24
 label variable anc4 "4+ ANC visits"
 label define anc4 0 "<4 ANC visits" 1 "4+ ANC visits"
 label values anc4 anc4 
@@ -962,10 +965,29 @@ replace svd=1 if delivery==5
 replace svd=. if delivery==.
 codebook gest if svd==1 & genotype==1
 
+***************************************************************************************************************************************************************
+* CH check of all numbers in paper (7th Feb 2020)
+***************************************************************************************************************************************************************
+*page 6, line 1-3 
+tabstat pregtot, statistics (n mean sd) by (genotype)
+tabstat parity, statistics (n mean sd) by (genotype)
+ranksum parity, by (genotype)
+*page 6, lines 6-10
+tab spab genotype, chi2 col
+xtlogit spab genotype, or
+*page 6, last paragraph
+tab anc1 genotype, miss col
+tab anc1 genotype, col
+tab anc4 genotype, miss col
+tab anc4 genotype, col
+
+
+
+
 save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_AASSpreg.dta", replace
 
-*/
-*****************************************************************************************************************************************************************
+
+/*****************************************************************************************************************************************************************
 *	12-Mar-2019: total hemoglobin, mean cell volume, reticulocyte counts, total nucleated cell count, HbF level or alpha thalassaemia status; history of dactylitis 
 ******************************************************************************************************************************************************************
 import excel "`datapath'\version01\1-input\Subdivisions pregnancy outcome.xlsx", sheet("christina") firstrow clear
