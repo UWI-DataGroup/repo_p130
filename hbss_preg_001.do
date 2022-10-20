@@ -330,8 +330,38 @@ list labtime delivery if labtime!=. & delivery !=5
 codebook labtime if delivery==5
 summarize labtime if delivery==5
 
-
 save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_SSpreg.dta", replace
+
+
+** comparison of characteristics of SS with matched controls vs not (31-Aug-2020; birth weight, live pregnancies, and admissions for bone pain and ACS)
+sort Coh
+gen match=0
+order match, after(DOB)
+replace match=1 if Coh>125 & match<.
+*BW
+tab bw_cat match, chi2 col 
+*live birth
+gen preg_out=.
+replace preg_out=1 if delivery==1 | delivery==2 | delivery==5
+replace preg_out=2 if delivery==3
+replace preg_out=3 if delivery==4
+replace preg_out=4 if delivery==6
+replace preg_out=5 if delivery==7
+label define preg_out 1 "Live birth" 2 "Stillbirth" 3 "Surgical termination of pregnancy" 4 "Spontaneous abortion" 5 "Ectopic"
+label values preg_out preg_out
+gen lbirth=.
+replace lbirth=1 if preg_out==1
+replace lbirth=0 if preg_out==2 | preg_out==3 | preg_out==4 | preg_out==5
+label variable lbirth "live birth"
+label define yesno 1 "Yes" 0 "No"
+label values lbirth yesno
+tab lbirth match, chi2 col
+
+*Acute chest syndrome
+tab ACS match, chi2 col 
+
+*painful crisis
+tab pcrisis match, chi2 col 
 
 
 *****************************************************************************************************************
@@ -339,7 +369,7 @@ save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\versi
 *****************************************************************************************************************
 clear
 **Open dataset
-import excel "`datapath'\version01\1-input\Cohort AA pregnancy 2018 coding Ian-Christina(USE).xlsx", sheet("Sheet1") firstrow clear
+import excel "`datapath'\version01\1-input\Cohort AA pregnancy 2018 coding Ian-Christina(USE) (2).xlsx", sheet("Sheet1") firstrow clear
 *------------------------------------------------------------------------------------------------------------------------------
 **DATA PREPARATION
 *------------------------------------------------------------------------------------------------------------------------------
@@ -649,10 +679,10 @@ list delivery del_success preg_success BW gest if del_success != preg_success
 
 *birthweight: low BW defined as <2.5kg
 gen bw_cat=.
-replace bw_cat=0 if BW<2.5
-replace bw_cat=1 if BW>=2.5 & BW<.
+replace bw_cat=1 if BW<2.5
+replace bw_cat=0 if BW>=2.5 & BW<.
 label variable bw_cat "birthweight category"
-label define bw_cat 0 "<2.5" 1 ">=2.5"
+label define bw_cat 1 "<2.5" 0 ">=2.5"
 label values bw_cat bw_cat
 tab bw_cat, miss
 
@@ -795,6 +825,7 @@ label variable term "termination"
 label values term yesno
 tab term genotype, col
 xtlogit term genotype, or
+xtgee term genotype aap, family(binomial) link(log) corr(exchangeable) eform
 
 *spontaneous Abortion
 gen spab=0 
@@ -802,6 +833,8 @@ replace spab=1 if delivery==6
 replace spab=. if delivery==.
 tab spab genotype, chi2 col
 xtlogit spab genotype, or
+xtgee spab genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
  
 *stillbirth - generate binary variable
 gen sbirth=.
@@ -811,9 +844,14 @@ label variable sbirth "stillbirth"
 label values sbirth yesno
 xtlogit sbirth genotype, or
 tab sbirth genotype, col chi exact
+xtgee sbirth genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
 
 *ectopic pregnancy
 tab ect genotype, chi2 exact col
+xtlogit ect genotype, or
+
+
 
 *live birth - generate binary variable
 gen lbirth=.
@@ -824,37 +862,45 @@ label define yesno 1 "Yes" 0 "No"
 label values lbirth yesno
 tab lbirth genotype, chi2 col
 xtlogit lbirth genotype, or
+xtgee lbirth genotype aap, family(binomial) link(log) corr(exchangeable) eform
 
-*neonatal deaths
-gen nnd=0
-replace nnd=1 if outcome==1
-replace nnd=. if outcome==.
-tab nnd genotype, chi2 exact col
+
 
 *gestational age
 codebook gest if genotype==1
 codebook gest if genotype==0
 ranksum gest, by(genotype)
+gen lowgest=.
+replace lowgest=1 if gest >= 24 & gest < 37 
+replace lowgest=0 if gest>=37 & gest <.
+replace lowgest=. if lbirth!=1
+tab lowgest genotype, col
+xtlogit lowgest genotype, or
+xtgee lowgest genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
 
 *birthweight
+replace BW=. if lbirth!=1
 codebook BW if genotype==1
 codebook BW if genotype==0
 ranksum BW, by(genotype)
-tab bw_cat genotype, miss col
+tab bw_cat genotype, col
 xtlogit bw_cat genotype, or
 *birthweight after controlling for gestational age
 bysort genotype: sum BW
 regress BW genotype
 regress BW genotype gest
 
-*low Apgar // need to work out whether to exclude APgar scores of 0
+*low Apgar 
 numlabel, add mask("#")
 label values lowAPGAR5 lowAPGAR5
 replace lowAPGAR5=. if lbirth==0
-replace lowAPGAR5=. if nnd==1
+*replace lowAPGAR5=. if nnd==1
 tab lowAPGAR5 genotype, col chi exact
 logistic lowAPGAR5 genotype
 xtlogit lowAPGAR5 genotype, or
+xtgee lowAPGAR5 genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
 
 *delivery details for live deliveries
 gen deldet=.
@@ -872,28 +918,55 @@ replace ces=0 if deldet==2
 label variable ces "caesarian section"
 label values ces yesno
 tab ces genotype, col
-xtlogit ces genotype
+xtlogit ces genotype, or
+xtgee ces genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
 
 *Acute chest syndrome
 tab ACS genotype, chi2 exact
+xtlogit ACS genotype, or
+xtgee ACS genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
+
 *UTI
-tab UTI genotype, chi2 exact
+tab UTI genotype, col chi2 exact
+xtlogit UTI genotype, or
+xtgee UTI genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
+
 *Antepartum haemorrhage
 tab APH genotype, chi2 exact
+xtlogit APH genotype, or
+xtgee APH genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
 *Post partum haemorrhage
 tab PPH genotype, chi2 exact
+xtlogit PPH genotype, or
+xtgee PPH genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
+
 *Pregnancy induced hypertension
 tab PIH genotype, col
 xtlogit PIH genotype, or
+xtgee PIH genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
 *Pre-eclampsia & eclampsia
 tab PET genotype, chi2 exact expected col
 xtlogit PET genotype, or
+xtgee PET genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
 *Retained placenta
 tab retplac genotype, chi2 exact col
+xtlogit retplac genotype, or
+xtgee retplac genotype aap, family(binomial) link(log) corr(exchangeable) eform
+
+
 *sepsis
 tab sep genotype, chi2 exact col
+
 *maternal deaths
 tab Death genotype, chi2 exact col
+
 
 
 ******************************************************************************************************************************************************
@@ -981,13 +1054,40 @@ tab anc1 genotype, col
 tab anc4 genotype, miss col
 tab anc4 genotype, col
 
-
-
-
+***************************************************************************************************************************************************************
+* save dataset for further work
+***************************************************************************************************************************************************************
 save "X:\The University of the West Indies\DataGroup - repo_data\data_p130\version01\1-input\cohort_AASSpreg.dta", replace
 
 
-/*****************************************************************************************************************************************************************
+/**Summarizing year of birth
+gen year=year(DOB)
+sort genotype DOB
+gen num = _n
+order num, after (DOB)
+drop if num >298 // gets rid of cases with no matched controls
+
+label variable DOB "Date of Birth"
+
+#delimit ; 
+
+graph box DOB, over (genotype) 
+          box(1, fcolor(gs10) fintensity(inten100) lcolor(gs10)) medtype(cline) medline(lcolor(white) lwidth(medthick)) marker(1, mcolor(gs5) msize(small)) 
+          title(Date of Birth in Cases and Controls) 
+          xsize(3) graphregion(fcolor(white))
+          ylabel(5000(200)5800, format (%td) angle(0) labsize(vsmall))
+          ;
+#delimit cr 
+
+gen dup = 0
+replace dup = 1 if ID==ID[_n+1]
+order dup, after(ID)
+drop if dup==1
+tab year genotype
+
+tabstat DOB, by(genotype) stat (p50 p25 p75) format(%td)
+
+*****************************************************************************************************************************************************************
 *	12-Mar-2019: total hemoglobin, mean cell volume, reticulocyte counts, total nucleated cell count, HbF level or alpha thalassaemia status; history of dactylitis 
 ******************************************************************************************************************************************************************
 import excel "`datapath'\version01\1-input\Subdivisions pregnancy outcome.xlsx", sheet("christina") firstrow clear
@@ -1002,9 +1102,9 @@ ologit Group retics, or
 ologit Group HbF, or
 ologit Group Alpha, or
 ologit Group HOdactylitis, or 
-*/
 
-/****************************************************************************
+
+****************************************************************************
 **GS email (21-Mar-19): relationship between maternal HbF and birth weight
 ****************************************************************************
 drop if genotype==0
@@ -1014,9 +1114,9 @@ bysort ID: egen Hb2=min(Hb)
 xtreg BW HbF2 Hb2 
 bysort ID: egen retics2=min(retics)
 xtreg BW HbF2 Hb2 retics2
-*/
 
-/*******************************************************
+
+*******************************************************
 * Markov model: effect of pregnancy order on success 
 *******************************************************
 import excel using "`datapath'\version01\1-input\ss_preg_outcome_001.xlsx", firstrow clear
